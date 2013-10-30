@@ -19,12 +19,12 @@ package org.gephi.attribute.time;
  *
  * @author mbastian
  */
-public final class Interval {
+public class Interval {
 
-    private final double low;   // the left endpoint
-    private final double high;  // the right endpoint
-    private final boolean lopen; // indicates if the left endpoint is excluded
-    private final boolean ropen; // indicates if the right endpoint is excluded
+    protected final double low;   // the left endpoint
+    protected final double high;  // the right endpoint
+    protected final boolean lopen; // indicates if the left endpoint is excluded
+    protected final boolean ropen; // indicates if the right endpoint is excluded
 
     public Interval(Interval interval) {
         this.low = interval.low;
