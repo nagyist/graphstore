@@ -19,8 +19,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import org.gephi.attribute.api.Origin;
+import org.gephi.attribute.api.TimeFormat;
 import org.gephi.attribute.time.Interval;
+import org.gephi.attribute.time.TimestampDoubleSet;
 import org.gephi.attribute.time.TimestampSet;
 import org.gephi.graph.api.DirectedGraph;
 import org.gephi.graph.api.DirectedSubgraph;
@@ -48,6 +51,7 @@ public class GraphStore implements DirectedGraph, DirectedSubgraph {
     protected final ColumnStore<Edge> edgeColumnStore;
     protected final GraphViewStore viewStore;
     protected final TimestampStore timestampStore;
+    protected final GraphAttributesImpl attributes;
     //Factory
     protected final GraphFactoryImpl factory;
     //Lock
@@ -59,6 +63,8 @@ public class GraphStore implements DirectedGraph, DirectedSubgraph {
     protected final UndirectedDecorator undirectedDecorator;
     //Main Graph view
     protected final GraphView mainGraphView;
+    //TimeFormat
+    protected TimeFormat timeFormat;
 
     public GraphStore() {
         this(null);
@@ -74,22 +80,27 @@ public class GraphStore implements DirectedGraph, DirectedSubgraph {
         observers = GraphStoreConfiguration.ENABLE_OBSERVERS ? new ArrayList<GraphObserverImpl>() : null;
         edgeStore = new EdgeStore(edgeTypeStore, GraphStoreConfiguration.ENABLE_AUTO_LOCKING ? lock : null, viewStore, GraphStoreConfiguration.ENABLE_OBSERVERS ? version : null);
         nodeStore = new NodeStore(edgeStore, GraphStoreConfiguration.ENABLE_AUTO_LOCKING ? lock : null, viewStore, GraphStoreConfiguration.ENABLE_OBSERVERS ? version : null);
-        nodeColumnStore = new ColumnStore<Node>(Node.class, GraphStoreConfiguration.ENABLE_INDEX_NODES, GraphStoreConfiguration.ENABLE_AUTO_LOCKING ? lock : null);
-        edgeColumnStore = new ColumnStore<Edge>(Edge.class, GraphStoreConfiguration.ENABLE_INDEX_EDGES, GraphStoreConfiguration.ENABLE_AUTO_LOCKING ? lock : null);
+        nodeColumnStore = new ColumnStore<Node>(Node.class, GraphStoreConfiguration.ENABLE_INDEX_NODES);
+        edgeColumnStore = new ColumnStore<Edge>(Edge.class, GraphStoreConfiguration.ENABLE_INDEX_EDGES);
         timestampStore = new TimestampStore(this, GraphStoreConfiguration.ENABLE_AUTO_LOCKING ? lock : null);
+        attributes = new GraphAttributesImpl();
         factory = new GraphFactoryImpl(this);
+        timeFormat = GraphStoreConfiguration.DEFAULT_TIME_FORMAT;
 
         undirectedDecorator = new UndirectedDecorator(this);
 
         //Default cols
-        if (GraphStoreConfiguration.ENABLE_ELEMENT_TIMESTAMP_SET) {
-            nodeColumnStore.addColumn(new ColumnImpl("timestamp", TimestampSet.class, "Timestamp", null, Origin.PROPERTY, false));
-            edgeColumnStore.addColumn(new ColumnImpl("timestamp", TimestampSet.class, "Timestamp", null, Origin.PROPERTY, false));
-        }
+        nodeColumnStore.addColumn(new ColumnImpl(model != null ? model.nodeTable : null, "id", Object.class, "Id", null, Origin.PROPERTY, false, true));
+        edgeColumnStore.addColumn(new ColumnImpl(model != null ? model.edgeTable : null, "id", Object.class, "Id", null, Origin.PROPERTY, false, true));
         if (GraphStoreConfiguration.ENABLE_ELEMENT_LABEL) {
-            nodeColumnStore.addColumn(new ColumnImpl("label", String.class, "Label", null, Origin.PROPERTY, false));
-            edgeColumnStore.addColumn(new ColumnImpl("label", String.class, "Label", null, Origin.PROPERTY, false));
+            nodeColumnStore.addColumn(new ColumnImpl(model != null ? model.nodeTable : null, "label", String.class, "Label", null, Origin.PROPERTY, false, false));
+            edgeColumnStore.addColumn(new ColumnImpl(model != null ? model.edgeTable : null, "label", String.class, "Label", null, Origin.PROPERTY, false, false));
         }
+        if (GraphStoreConfiguration.ENABLE_ELEMENT_TIMESTAMP_SET) {
+            nodeColumnStore.addColumn(new ColumnImpl(model != null ? model.nodeTable : null, "timestamp", TimestampSet.class, "Timestamp", null, Origin.PROPERTY, false, false));
+            edgeColumnStore.addColumn(new ColumnImpl(model != null ? model.edgeTable : null, "timestamp", TimestampSet.class, "Timestamp", null, Origin.PROPERTY, false, false));
+        }
+        edgeColumnStore.addColumn(new ColumnImpl(model != null ? model.edgeTable : null, "weight", TimestampDoubleSet.class, "Weight", null, Origin.PROPERTY, false, false));
     }
 
     @Override
@@ -214,8 +225,7 @@ public class GraphStore implements DirectedGraph, DirectedSubgraph {
     public boolean removeNodeAll(Collection<? extends Node> nodes) {
         autoWriteLock();
         try {
-            for (Iterator<? extends Node> itr = nodes.iterator(); itr.hasNext();) {
-                Node node = itr.next();
+            for (Node node : nodes) {
                 nodeStore.checkNonNullNodeObject(node);
                 for (EdgeStore.EdgeInOutIterator edgeIterator = edgeStore.edgeIterator((NodeImpl) node); edgeIterator.hasNext();) {
                     edgeIterator.next();
@@ -515,6 +525,31 @@ public class GraphStore implements DirectedGraph, DirectedSubgraph {
     }
 
     @Override
+    public Object getAttribute(String key) {
+        return attributes.getValue(key);
+    }
+
+    @Override
+    public Object getAttribute(String key, double timestamp) {
+        return attributes.getValue(key, timestamp);
+    }
+
+    @Override
+    public Set<String> getAttributeKeys() {
+        return attributes.getKeys();
+    }
+
+    @Override
+    public void setAttribute(String key, Object value) {
+        attributes.setValue(key, value);
+    }
+
+    @Override
+    public void setAttribute(String key, Object value, double timestamp) {
+        attributes.setValue(key, value, timestamp);
+    }
+
+    @Override
     public void readLock() {
         lock.readLock();
     }
@@ -788,7 +823,7 @@ public class GraphStore implements DirectedGraph, DirectedSubgraph {
 
         @Override
         public Interval getTimeInterval() {
-            return null;
+            return Interval.INFINITY_INTERVAL;
         }
     }
 }

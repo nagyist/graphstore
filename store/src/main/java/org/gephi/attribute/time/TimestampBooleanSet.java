@@ -43,14 +43,23 @@ public final class TimestampBooleanSet extends TimestampValueSet<Boolean> {
 
     public void putBoolean(int timestampIndex, boolean value) {
         final int index = putInner(timestampIndex);
-        if (index < values.length) {
-            values[index] = value;
+        if (index < 0) {
+            int insertIndex = -index - 1;
+
+            if (size < values.length) {
+                if (insertIndex < size - 1) {
+                    System.arraycopy(values, insertIndex, values, insertIndex + 1, size - insertIndex - 1);
+                }
+                values[insertIndex] = value;
+            } else {
+                boolean[] newArray = new boolean[values.length + 1];
+                System.arraycopy(values, 0, newArray, 0, insertIndex);
+                System.arraycopy(values, insertIndex, newArray, insertIndex + 1, values.length - insertIndex);
+                newArray[insertIndex] = value;
+                values = newArray;
+            }
         } else {
-            boolean[] newArray = new boolean[values.length + 1];
-            System.arraycopy(values, 0, newArray, 0, index);
-            System.arraycopy(values, index, newArray, index + 1, values.length - index);
-            newArray[index] = value;
-            values = newArray;
+            values[index] = value;
         }
     }
 
@@ -66,6 +75,22 @@ public final class TimestampBooleanSet extends TimestampValueSet<Boolean> {
 
     @Override
     public Boolean get(int timestampIndex, Boolean defaultValue) {
+        final int index = getIndex(timestampIndex);
+        if (index >= 0) {
+            return values[index];
+        }
+        return defaultValue;
+    }
+    
+    public boolean getBoolean(int timestampIndex) {
+        final int index = getIndex(timestampIndex);
+        if (index >= 0) {
+            return values[index];
+        }
+        throw new IllegalArgumentException("The element doesn't exist");
+    }
+    
+    public boolean getBoolean(int timestampIndex, boolean defaultValue) {
         final int index = getIndex(timestampIndex);
         if (index >= 0) {
             return values[index];
@@ -129,14 +154,6 @@ public final class TimestampBooleanSet extends TimestampValueSet<Boolean> {
             return Boolean.FALSE;
         }
         return null;
-    }
-
-    public boolean getBoolean(int timestampIndex) {
-        final int index = getIndex(timestampIndex);
-        if (index >= 0) {
-            return values[index];
-        }
-        throw new IllegalArgumentException("The element doesn't exist");
     }
 
     @Override

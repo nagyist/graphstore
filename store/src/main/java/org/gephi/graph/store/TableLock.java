@@ -13,37 +13,28 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.gephi.attribute.api;
+
+package org.gephi.graph.store;
+
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  *
  * @author mbastian
  */
-public interface Column {
-
-    public String getId();
-
-    public int getIndex();
-
-    public String getTitle();
-
-    public Class getTypeClass();
-
-    public Origin getOrigin();
-
-    public Table getTable();
-
-    public boolean isIndexed();
-
-    public boolean isArray();
-
-    public boolean isDynamic();
-
-    public boolean isNumber();
-
-    public boolean isProperty();
+public class TableLock {
     
-    public boolean isReadOnly();
-
-    public Object getDefaultValue();
+    protected final ReentrantLock lock;
+    
+    public TableLock() {
+        lock = new ReentrantLock();
+    }
+    
+    public void lock() {
+        lock.lock();
+    }
+    
+    public void unlock() {
+        lock.unlock();
+    }
 }

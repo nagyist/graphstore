@@ -53,19 +53,15 @@ public class ColumnStore<T extends Element> implements Iterable<Column> {
     //Version
     protected final List<TableObserverImpl> observers;
     //Locking (optional)
-    protected final GraphLock lock;
+    protected final TableLock lock;
     //Variables
     protected int length;
 
     public ColumnStore(Class<T> elementType, boolean indexed) {
-        this(elementType, indexed, null);
-    }
-
-    public ColumnStore(Class<T> elementType, boolean indexed, GraphLock lock) {
         if (MAX_SIZE >= Short.MAX_VALUE - Short.MIN_VALUE + 1) {
             throw new RuntimeException("Column Store size can't exceed 65534");
         }
-        this.lock = lock;
+        this.lock = GraphStoreConfiguration.ENABLE_AUTO_LOCKING ? new TableLock() : null;
         this.garbageQueue = new ShortRBTreeSet();
         this.idMap = new Object2ShortOpenHashMap<String>(MAX_SIZE);
         this.columns = new ColumnImpl[MAX_SIZE];
@@ -80,7 +76,7 @@ public class ColumnStore<T extends Element> implements Iterable<Column> {
         checkNonNullColumnObject(column);
         checkIndexStatus(column);
 
-        writeLock();
+        lock();
         try {
             final ColumnImpl columnImpl = (ColumnImpl) column;
             short id = idMap.getShort(columnImpl.getId());
@@ -106,14 +102,14 @@ public class ColumnStore<T extends Element> implements Iterable<Column> {
                 throw new IllegalArgumentException("The column already exist");
             }
         } finally {
-            writeUnlock();
+            unlock();
         }
     }
 
     public void removeColumn(final Column column) {
         checkNonNullColumnObject(column);
 
-        writeLock();
+        lock();
         try {
             final ColumnImpl columnImpl = (ColumnImpl) column;
             short id = idMap.removeShort(column.getId());
@@ -129,17 +125,17 @@ public class ColumnStore<T extends Element> implements Iterable<Column> {
             }
             columnImpl.setStoreId(NULL_ID);
         } finally {
-            writeUnlock();
+            unlock();
         }
     }
 
     public void removeColumn(final String key) {
         checkNonNullObject(key);
-        readLock();
+        lock();
         try {
             removeColumn(getColumn(key));
         } finally {
-            readUnlock();
+            unlock();
         }
     }
 
@@ -155,10 +151,14 @@ public class ColumnStore<T extends Element> implements Iterable<Column> {
         checkNonNullColumnObject(column);
         return ((ColumnImpl) column).getEstimator();
     }
+    
+    protected Estimator getEstimator(int index) {
+        return ((ColumnImpl) columns[index]).getEstimator();
+    }
 
     public int getColumnIndex(final String key) {
         checkNonNullObject(key);
-        readLock();
+        lock();
         try {
             short id = idMap.getShort(key);
             if (id == NULL_SHORT) {
@@ -166,12 +166,12 @@ public class ColumnStore<T extends Element> implements Iterable<Column> {
             }
             return shortToInt(id);
         } finally {
-            readUnlock();
+            unlock();
         }
     }
 
     public Column getColumnByIndex(final int index) {
-        readLock();
+        lock();
         try {
             if (index < 0 || index >= columns.length) {
                 throw new IllegalArgumentException("The column doesnt exist");
@@ -182,31 +182,31 @@ public class ColumnStore<T extends Element> implements Iterable<Column> {
             }
             return a;
         } finally {
-            readUnlock();
+            unlock();
         }
     }
 
     public Column getColumn(final String key) {
         checkNonNullObject(key);
-        readLock();
+        lock();
         try {
             short id = idMap.getShort(key);
             if (id == NULL_SHORT) {
-                throw new IllegalArgumentException("The column doesnt exist");
+                return null;
             }
             return columns[shortToInt(id)];
         } finally {
-            readUnlock();
+            unlock();
         }
     }
 
     public boolean hasColumn(String key) {
         checkNonNullObject(key);
-        readLock();
+        lock();
         try {
             return idMap.containsKey(key);
         } finally {
-            readUnlock();
+            unlock();
         }
     }
 
@@ -216,7 +216,7 @@ public class ColumnStore<T extends Element> implements Iterable<Column> {
     }
 
     public Column[] toArray() {
-        readLock();
+        lock();
         try {
             Column[] cols = new Column[size()];
             int j = 0;
@@ -228,27 +228,32 @@ public class ColumnStore<T extends Element> implements Iterable<Column> {
             }
             return cols;
         } finally {
-            readUnlock();
+            unlock();
         }
     }
 
     public Set<String> getColumnKeys() {
-        readLock();
+        lock();
         try {
             return new ObjectOpenHashSet<String>(idMap.keySet());
         } finally {
-            readUnlock();
+            unlock();
         }
     }
 
     public void clear() {
-        garbageQueue.clear();
-        idMap.clear();
-        length = 0;
-        Arrays.fill(columns, null);
-        Arrays.fill(timestampMaps, null);
-        if (indexStore != null) {
-            indexStore.clear();
+        lock();
+        try {
+            garbageQueue.clear();
+            idMap.clear();
+            length = 0;
+            Arrays.fill(columns, null);
+            Arrays.fill(timestampMaps, null);
+            if (indexStore != null) {
+                indexStore.clear();
+            }
+        } finally {
+            unlock();
         }
     }
 
@@ -257,13 +262,22 @@ public class ColumnStore<T extends Element> implements Iterable<Column> {
     }
 
     public TimestampMap getTimestampMap(Column column) {
-        int index = column.getIndex();
-        TimestampMap timestampStore = timestampMaps[index];
-        if (timestampStore == null) {
-            timestampStore = new TimestampMap();
-            timestampMaps[index] = timestampStore;
+        return getTimestampMap(column.getIndex());
+    }
+
+    protected TimestampMap getTimestampMap(int index) {
+        lock();
+        try {
+
+            TimestampMap timestampStore = timestampMaps[index];
+            if (timestampStore == null) {
+                timestampStore = new TimestampMap();
+                timestampMaps[index] = timestampStore;
+            }
+            return timestampStore;
+        } finally {
+            unlock();
         }
-        return timestampStore;
     }
 
     protected TableObserverImpl createTableObserver(TableImpl table) {
@@ -291,27 +305,15 @@ public class ColumnStore<T extends Element> implements Iterable<Column> {
         return id - Short.MIN_VALUE - 1;
     }
 
-    void readLock() {
+    void lock() {
         if (lock != null) {
-            lock.readLock();
+            lock.lock();
         }
     }
 
-    void readUnlock() {
+    void unlock() {
         if (lock != null) {
-            lock.readUnlock();
-        }
-    }
-
-    void writeLock() {
-        if (lock != null) {
-            lock.writeLock();
-        }
-    }
-
-    void writeUnlock() {
-        if (lock != null) {
-            lock.writeUnlock();
+            lock.unlock();
         }
     }
 
@@ -363,10 +365,7 @@ public class ColumnStore<T extends Element> implements Iterable<Column> {
         public boolean hasNext() {
             while (index < length && (pointer = columns[index++]) == null) {
             }
-            if (pointer == null) {
-                return false;
-            }
-            return true;
+            return pointer != null;
         }
 
         @Override

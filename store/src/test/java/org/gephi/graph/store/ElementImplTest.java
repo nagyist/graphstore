@@ -18,6 +18,7 @@ package org.gephi.graph.store;
 import java.util.Set;
 import org.gephi.attribute.api.Column;
 import org.gephi.attribute.api.Origin;
+import org.gephi.attribute.time.TimestampIntegerSet;
 import static org.gephi.graph.store.GraphStoreConfiguration.ENABLE_ELEMENT_LABEL;
 import static org.gephi.graph.store.GraphStoreConfiguration.ENABLE_ELEMENT_TIMESTAMP_SET;
 import org.testng.Assert;
@@ -66,10 +67,22 @@ public class ElementImplTest {
         Assert.assertEquals(node.getAttribute(column), 1);
     }
 
+    @Test
+    public void testReplaceAttribute() {
+        GraphStore store = new GraphStore();
+        Column column = generateBasicColumn(store);
+
+        NodeImpl node = new NodeImpl(0, store);
+        node.setAttribute("age", 1);
+        node.setAttribute("age", 2);
+
+        Assert.assertEquals(node.getAttribute(column), 2);
+    }
+
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testSetAttributeUnknownColumn() {
         GraphStore store = new GraphStore();
-        ColumnImpl columnImpl = new ColumnImpl("0", String.class, "title", "", Origin.DATA, false);
+        ColumnImpl columnImpl = new ColumnImpl("0", String.class, "title", "", Origin.DATA, false, false);
         NodeImpl node = new NodeImpl(0, store);
         node.setAttribute(columnImpl, "0");
     }
@@ -107,6 +120,71 @@ public class ElementImplTest {
     }
 
     @Test
+    public void testSetAttributeDynamicColumn() {
+        GraphStore store = new GraphStore();
+        Column column = generateDynamicColumn(store);
+
+        NodeImpl node = new NodeImpl(0, store);
+        node.setAttribute(column, 1, 2.0);
+        node.setAttribute(column, 2, 1.0);
+
+        Assert.assertEquals(node.attributes.length, 1 + getElementPropertiesLength());
+        Assert.assertEquals(node.attributes[getFirstNonPropertyIndex()].getClass(), TimestampIntegerSet.class);
+        Assert.assertEquals(node.getAttribute(column, 2.0), 1);
+        Assert.assertEquals(node.getAttribute(column, 1.0), 2);
+    }
+
+    @Test
+    public void testSetAttributeDynamicString() {
+        GraphStore store = new GraphStore();
+        Column column = generateDynamicColumn(store);
+
+        NodeImpl node = new NodeImpl(0, store);
+        node.setAttribute("age", 1, 2.0);
+
+        Assert.assertEquals(node.getAttribute(column, 2.0), 1);
+    }
+    
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testSetAttributeNonDynamic() {
+        GraphStore store = new GraphStore();
+        Column column = generateBasicColumn(store);
+
+        NodeImpl node = new NodeImpl(0, store);
+        node.setAttribute(column, 1, 2.0);
+    }
+
+    @Test
+    public void testReplaceDynamicAttribute() {
+        GraphStore store = new GraphStore();
+        Column column = generateDynamicColumn(store);
+
+        NodeImpl node = new NodeImpl(0, store);
+        node.setAttribute(column, 1, 2.0);
+        node.setAttribute(column, 2, 2.0);
+
+        Assert.assertEquals(node.getAttribute(column, 2.0), 2);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testNaNTimestamp() {
+        GraphStore store = new GraphStore();
+        Column column = generateDynamicColumn(store);
+
+        NodeImpl node = new NodeImpl(0, store);
+        node.setAttribute(column, 1, Double.NaN);
+    }
+    
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInfiniteTimestamp() {
+        GraphStore store = new GraphStore();
+        Column column = generateDynamicColumn(store);
+
+        NodeImpl node = new NodeImpl(0, store);
+        node.setAttribute(column, 1, Double.POSITIVE_INFINITY);
+    }
+
+    @Test
     public void testGetAttributeColumn() {
         GraphStore store = new GraphStore();
         Column column = generateBasicColumn(store);
@@ -136,7 +214,7 @@ public class ElementImplTest {
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testGetAttributeUnknownColumn() {
         GraphStore store = new GraphStore();
-        ColumnImpl columnImpl = new ColumnImpl("0", String.class, "title", "", Origin.DATA, false);
+        ColumnImpl columnImpl = new ColumnImpl("0", String.class, "title", "", Origin.DATA, false, false);
         NodeImpl node = new NodeImpl(0, store);
         node.getAttribute(columnImpl);
     }
@@ -150,12 +228,45 @@ public class ElementImplTest {
         NodeImpl node = new NodeImpl(0, store);
         node.getAttribute(column);
     }
+    
+    @Test
+    public void testGetAttributeDynamicColumn() {
+        GraphStore store = new GraphStore();
+        Column column = generateDynamicColumn(store);
+
+        NodeImpl node = new NodeImpl(0, store);
+        node.setAttribute(column, 1, 1.0);
+        
+        Assert.assertEquals(node.getAttribute(column, 1.0), 1);
+    }
+    
+    @Test
+    public void testGetAttributeDynamicString() {
+        GraphStore store = new GraphStore();
+        Column column = generateDynamicColumn(store);
+
+        NodeImpl node = new NodeImpl(0, store);
+        node.setAttribute(column, 1, 1.0);
+        
+        Assert.assertEquals(node.getAttribute("age", 1.0), 1);
+    }
+    
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testGetAttributeNonDynamic() {
+        GraphStore store = new GraphStore();
+        Column column = generateBasicColumn(store);
+
+        NodeImpl node = new NodeImpl(0, store);
+        node.setAttribute(column, 1);
+        
+        node.getAttribute(column, 1.0);
+    }
 
     @Test
     public void testGetDefaultValue() {
         GraphStore store = new GraphStore();
         Integer defaultValue = 25;
-        Column column = new ColumnImpl("age", Integer.class, "Age", defaultValue, Origin.DATA, true);
+        Column column = new ColumnImpl("age", Integer.class, "Age", defaultValue, Origin.DATA, true, false);
         store.nodeColumnStore.addColumn(column);
 
         NodeImpl node = new NodeImpl(0, store);
@@ -209,13 +320,18 @@ public class ElementImplTest {
 
     //Utility
     private Column generateBasicColumn(GraphStore graphStore) {
-        graphStore.nodeColumnStore.addColumn(new ColumnImpl("age", Integer.class, "Age", null, Origin.DATA, true));
+        graphStore.nodeColumnStore.addColumn(new ColumnImpl("age", Integer.class, "Age", null, Origin.DATA, true, false));
+        return graphStore.nodeColumnStore.getColumn("age");
+    }
+
+    private Column generateDynamicColumn(GraphStore graphStore) {
+        graphStore.nodeColumnStore.addColumn(new ColumnImpl("age", TimestampIntegerSet.class, "Age", null, Origin.DATA, false, false));
         return graphStore.nodeColumnStore.getColumn("age");
     }
 
     //Properties size
     public int getElementPropertiesLength() {
-        return (ENABLE_ELEMENT_LABEL ? 1 : 0) + (ENABLE_ELEMENT_TIMESTAMP_SET ? 1 : 0);
+        return 1 + (ENABLE_ELEMENT_LABEL ? 1 : 0) + (ENABLE_ELEMENT_TIMESTAMP_SET ? 1 : 0);
     }
 
     public int getFirstNonPropertyIndex() {

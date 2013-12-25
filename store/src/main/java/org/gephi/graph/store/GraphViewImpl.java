@@ -41,6 +41,7 @@ public class GraphViewImpl implements GraphView {
     protected final GraphStore graphStore;
     protected final boolean nodeView;
     protected final boolean edgeView;
+    protected final GraphAttributesImpl attributes;
     protected BitVector nodeBitVector;
     protected BitVector edgeBitVector;
     protected int storeId;
@@ -63,6 +64,7 @@ public class GraphViewImpl implements GraphView {
         this.graphStore = store;
         this.nodeView = nodes;
         this.edgeView = edges;
+        this.attributes = new GraphAttributesImpl();
         if (nodes) {
             this.nodeBitVector = new BitVector(store.nodeStore.maxStoreId());
         } else {
@@ -82,6 +84,7 @@ public class GraphViewImpl implements GraphView {
         this.graphStore = view.graphStore;
         this.nodeView = nodes;
         this.edgeView = edges;
+        this.attributes = new GraphAttributesImpl();
         if (nodes) {
             this.nodeBitVector = view.nodeBitVector.copy();
             this.nodeCount = view.nodeCount;
@@ -350,11 +353,15 @@ public class GraphViewImpl implements GraphView {
 
     public void fill() {
         if (nodeView) {
-            nodeBitVector = new BitVector(graphStore.nodeStore.maxStoreId());
+            if(nodeCount > 0) {
+                nodeBitVector = new BitVector(graphStore.nodeStore.maxStoreId());
+            }
             nodeBitVector.not();
             this.nodeCount = graphStore.nodeStore.size();
         }
-        edgeBitVector = new BitVector(graphStore.edgeStore.maxStoreId());
+        if(edgeCount > 0) {
+            edgeBitVector = new BitVector(graphStore.edgeStore.maxStoreId());
+        }
         edgeBitVector.not();
 
         this.edgeCount = graphStore.edgeStore.size();
@@ -483,6 +490,9 @@ public class GraphViewImpl implements GraphView {
     }
 
     public void setTimeInterval(Interval interval) {
+        if(interval == null) {
+            interval = Interval.INFINITY_INTERVAL;
+        }
         this.interval = interval;
     }
 

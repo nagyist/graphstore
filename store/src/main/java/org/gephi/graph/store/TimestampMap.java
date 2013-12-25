@@ -49,13 +49,16 @@ public class TimestampMap {
         indexMap = new double[0];
     }
 
-    //Protected
     public int getTimestampIndex(double timestamp) {
         int index = timestampMap.get(timestamp);
         if (index == NULL_INDEX) {
             index = addTimestamp(timestamp);
         }
         return index;
+    }
+
+    public boolean hasTimestampIndex(double timestamp) {
+        return timestampMap.containsKey(timestamp);
     }
 
     public int[] getTimestampIndices(Interval interval) {
@@ -139,6 +142,16 @@ public class TimestampMap {
             System.arraycopy(indexMap, 0, newArray, 0, indexMap.length);
             indexMap = newArray;
         }
+    }
+
+    protected void setTimestampMap(TimestampMap map) {
+        clear();
+        timestampMap.putAll(map.timestampMap);
+        timestampSortedMap.putAll(map.timestampSortedMap);
+        garbageQueue.addAll(map.garbageQueue);
+        indexMap = new double[map.indexMap.length];
+        System.arraycopy(map.indexMap, 0, indexMap, 0, map.indexMap.length);
+        length = map.length;
     }
 
     void checkDouble(double timestamp) {

@@ -18,6 +18,7 @@ package org.gephi.graph.store;
 import org.gephi.attribute.api.AttributeModel;
 import org.gephi.attribute.api.Index;
 import org.gephi.attribute.api.Table;
+import org.gephi.attribute.api.TimeFormat;
 import org.gephi.attribute.api.TimestampIndex;
 import org.gephi.attribute.time.Interval;
 import org.gephi.graph.api.DirectedGraph;
@@ -224,17 +225,16 @@ public class GraphModelImpl implements GraphModel, AttributeModel {
 
     @Override
     public Index getNodeIndex() {
-        IndexStore<Node> indexStore = store.nodeColumnStore.indexStore;
-        if (indexStore != null) {
-            return indexStore.getIndex(store);
-        }
-        return null;
+        return getNodeIndex(store.mainGraphView);
     }
 
     @Override
     public Index getNodeIndex(GraphView view) {
         IndexStore<Node> indexStore = store.nodeColumnStore.indexStore;
         if (indexStore != null) {
+            if(view.isMainView()) {
+                return indexStore.getIndex(store);
+            }
             return indexStore.getIndex(((GraphViewImpl) view).directedDecorator);
         }
         return null;
@@ -242,17 +242,16 @@ public class GraphModelImpl implements GraphModel, AttributeModel {
 
     @Override
     public Index getEdgeIndex() {
-        IndexStore<Edge> indexStore = store.edgeColumnStore.indexStore;
-        if (indexStore != null) {
-            return indexStore.getIndex(store);
-        }
-        return null;
+        return getEdgeIndex(store.mainGraphView);
     }
 
     @Override
     public Index getEdgeIndex(GraphView view) {
         IndexStore<Edge> indexStore = store.edgeColumnStore.indexStore;
         if (indexStore != null) {
+            if(view.isMainView()) {
+                return indexStore.getIndex(store);
+            }
             return indexStore.getIndex(((GraphViewImpl) view).directedDecorator);
         }
         return null;
@@ -260,17 +259,16 @@ public class GraphModelImpl implements GraphModel, AttributeModel {
 
     @Override
     public TimestampIndex<Node> getNodeTimestampIndex() {
-        TimestampIndexStore timestampStore = store.timestampStore.nodeIndexStore;
-        if (timestampStore != null) {
-            return timestampStore.getIndex(store);
-        }
-        return null;
+        return getNodeTimestampIndex(store.mainGraphView);
     }
 
     @Override
     public TimestampIndex<Node> getNodeTimestampIndex(GraphView view) {
         TimestampIndexStore timestampStore = store.timestampStore.nodeIndexStore;
         if (timestampStore != null) {
+            if(view.isMainView()) {
+                return timestampStore.getIndex(store);
+            }
             return timestampStore.getIndex(((GraphViewImpl) view).directedDecorator);
         }
         return null;
@@ -278,17 +276,16 @@ public class GraphModelImpl implements GraphModel, AttributeModel {
 
     @Override
     public TimestampIndex<Edge> getEdgeTimestampIndex() {
-        TimestampIndexStore timestampStore = store.timestampStore.edgeIndexStore;
-        if (timestampStore != null) {
-            return timestampStore.getIndex(store);
-        }
-        return null;
+        return getEdgeTimestampIndex(store.mainGraphView);
     }
 
     @Override
     public TimestampIndex<Edge> getEdgeTimestampIndex(GraphView view) {
         TimestampIndexStore timestampStore = store.timestampStore.edgeIndexStore;
         if (timestampStore != null) {
+            if(view.isMainView()) {
+                return timestampStore.getIndex(store);
+            }
             return timestampStore.getIndex(((GraphViewImpl) view).directedDecorator);
         }
         return null;
@@ -305,6 +302,42 @@ public class GraphModelImpl implements GraphModel, AttributeModel {
             }
         } finally {
             store.autoWriteUnlock();
+        }
+    }
+
+    @Override
+    public TimeFormat getTimeFormat() {
+        return store.timeFormat;
+    }
+
+    @Override
+    public void setTimeFormat(TimeFormat timeFormat) {
+        store.timeFormat = timeFormat;
+    }
+
+    @Override
+    public Interval getTimeBounds() {
+        TimestampStore timestampStore = store.timestampStore;
+        store.autoReadLock();
+        try {
+            double min = timestampStore.getMin(store);
+            double max = timestampStore.getMax(store);
+            return new Interval(min, max);
+        } finally {
+            store.autoReadUnlock();
+        }
+    }
+
+    @Override
+    public Interval getTimeBoundsVisible() {
+        TimestampStore timestampStore = store.timestampStore;
+        store.autoReadLock();
+        try {
+            double min = timestampStore.getMin(getGraphVisible());
+            double max = timestampStore.getMax(getGraphVisible());
+            return new Interval(min, max);
+        } finally {
+            store.autoReadUnlock();
         }
     }
 

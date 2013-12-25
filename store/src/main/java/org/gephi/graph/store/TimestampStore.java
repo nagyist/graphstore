@@ -16,6 +16,7 @@
 package org.gephi.graph.store;
 
 import org.gephi.graph.api.Edge;
+import org.gephi.graph.api.Graph;
 import org.gephi.graph.api.Node;
 
 /**
@@ -41,38 +42,53 @@ public class TimestampStore {
         nodeIndexStore = new TimestampIndexStore<Node>(this, nodeMap);
         edgeIndexStore = new TimestampIndexStore<Edge>(this, edgeMap);
     }
+    
+    public double getMin(Graph graph) {
+        double nodeMin = nodeIndexStore.getIndex(graph).getMinTimestamp();
+        double edgeMin = edgeIndexStore.getIndex(graph).getMinTimestamp();
+        return Math.min(nodeMin, edgeMin);
+    }
+    
+    public double getMax(Graph graph) {
+        double nodeMax = nodeIndexStore.getIndex(graph).getMaxTimestamp();
+        double edgeMax = edgeIndexStore.getIndex(graph).getMaxTimestamp();
+        return Math.max(nodeMax, edgeMax);
+    }
 
     public boolean isEmpty() {
         return nodeMap.size() == 0 && edgeMap.size() == 0;
     }
 
     public void clear() {
+        //TODO
     }
 
     public void clearEdges() {
     }
 
-    private void readLock() {
-        if (lock != null) {
-            lock.readLock();
-        }
+    @Override
+    public int hashCode() {
+        int hash = 3;
+        hash = 79 * hash + (this.nodeMap != null ? this.nodeMap.hashCode() : 0);
+        hash = 79 * hash + (this.edgeMap != null ? this.edgeMap.hashCode() : 0);
+        return hash;
     }
 
-    private void readUnlock() {
-        if (lock != null) {
-            lock.readUnlock();
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
         }
-    }
-
-    private void writeLock() {
-        if (lock != null) {
-            lock.writeLock();
+        if (getClass() != obj.getClass()) {
+            return false;
         }
-    }
-
-    private void writeUnlock() {
-        if (lock != null) {
-            lock.writeUnlock();
+        final TimestampStore other = (TimestampStore) obj;
+        if (this.nodeMap != other.nodeMap && (this.nodeMap == null || !this.nodeMap.equals(other.nodeMap))) {
+            return false;
         }
+        if (this.edgeMap != other.edgeMap && (this.edgeMap == null || !this.edgeMap.equals(other.edgeMap))) {
+            return false;
+        }
+        return true;
     }
 }
