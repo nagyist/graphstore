@@ -138,17 +138,21 @@ public class AttributeUtils {
         if (typeClass.equals(String.class)) {
             return str;
         } else if (typeClass.equals(Byte.class)) {
-            return new Byte(str);
+            return new Byte(removeDecimalDigitsFromString(str));
         } else if (typeClass.equals(Short.class)) {
-            return new Short(str);
+            return new Short(removeDecimalDigitsFromString(str));
         } else if (typeClass.equals(Integer.class)) {
-            return new Integer(str);
+            return new Integer(removeDecimalDigitsFromString(str));
         } else if (typeClass.equals(Long.class)) {
-            return new Long(str);
+            return new Long(removeDecimalDigitsFromString(str));
+        } else if (typeClass.equals(BigInteger.class)) {
+            return new BigInteger(removeDecimalDigitsFromString(str));
         } else if (typeClass.equals(Float.class)) {
             return new Float(str);
         } else if (typeClass.equals(Double.class)) {
             return new Double(str);
+        } else if (typeClass.equals(BigDecimal.class)) {
+            return new BigDecimal(str);
         } else if (typeClass.equals(Boolean.class)) {
             if (str.length() == 1) {
                 if (str.charAt(0) == '1') {
@@ -372,5 +376,5 @@ public class AttributeUtils {
     private static String removeDecimalDigitsFromString(String s) {
         return removeDecimalDigitsFromStringPattern.matcher(s).replaceAll("");
     }
-    private static final Pattern removeDecimalDigitsFromStringPattern = Pattern.compile("\\.[0-9]*");
+    private static final Pattern removeDecimalDigitsFromStringPattern = Pattern.compile("[\\.\\,][0-9]*");
 }
