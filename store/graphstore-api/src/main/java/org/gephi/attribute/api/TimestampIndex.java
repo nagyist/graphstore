@@ -36,6 +36,13 @@ public interface TimestampIndex<T extends Element> {
      * @return the maximum timestamp, or +inf if not defined
      */
     public double getMaxTimestamp();
+    
+    /**
+     * Returns all timestamps in this index.
+     * 
+     * @return All timestamps
+     */
+    public double[] getTimestamps();
 
     /**
      * Returns all elements at the given timestamp.

@@ -60,7 +60,7 @@ public class TimestampMap {
     public boolean hasTimestampIndex(double timestamp) {
         return timestampMap.containsKey(timestamp);
     }
-
+    
     public int[] getTimestampIndices(Interval interval) {
         IntList res = new IntArrayList();
         double low = interval.getLow();
@@ -85,6 +85,10 @@ public class TimestampMap {
         return timestampMap.containsKey(timestamp);
     }
 
+    public double[] getTimestamps(){
+        return timestampSortedMap.keySet().toDoubleArray();
+    }
+    
     public double[] getTimestamps(int[] indices) {
         int indicesLength = indices.length;
         double[] res = new double[indicesLength];

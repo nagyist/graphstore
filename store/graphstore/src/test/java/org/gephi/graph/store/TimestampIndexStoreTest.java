@@ -40,7 +40,7 @@ public class TimestampIndexStoreTest {
 
         store.timestampMap.addTimestamp(2.0);
         Assert.assertEquals(store.mainIndex.getMinTimestamp(), 1.0);
-
+        
         store.timestampMap.removeTimestamp(1.0);
         Assert.assertEquals(store.mainIndex.getMinTimestamp(), 2.0);
     }
@@ -59,6 +59,29 @@ public class TimestampIndexStoreTest {
 
         store.timestampMap.removeTimestamp(2.0);
         Assert.assertEquals(store.mainIndex.getMaxTimestamp(), 1.0);
+    }
+    
+    @Test
+    public void testGetTimestamps() {
+        TimestampStore timestampStore = new TimestampStore(null, null);
+        TimestampIndexStore<Node> store = timestampStore.nodeIndexStore;
+        Assert.assertEquals(store.mainIndex.getMaxTimestamp(), Double.POSITIVE_INFINITY);
+
+        store.timestampMap.addTimestamp(1.0);
+        store.timestampMap.addTimestamp(2.0);
+        store.timestampMap.addTimestamp(4.0);
+        store.timestampMap.addTimestamp(8.5);
+
+        Assert.assertEquals(store.timestampMap.getTimestamps(), new double[]{1, 2, 4, 8.5});
+        
+        store.timestampMap.removeTimestamp(2.0);
+        
+        Assert.assertEquals(store.timestampMap.getTimestamps(), new double[]{1, 4, 8.5});
+        
+        store.timestampMap.removeTimestamp(1);
+        store.timestampMap.addTimestamp(2500);
+        
+        Assert.assertEquals(store.timestampMap.getTimestamps(), new double[]{4, 8.5, 2500});
     }
 
     @Test

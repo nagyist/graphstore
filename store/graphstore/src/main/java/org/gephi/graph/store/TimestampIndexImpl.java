@@ -108,6 +108,11 @@ public class TimestampIndexImpl<T extends Element> implements TimestampIndex<T> 
     }
 
     @Override
+    public double[] getTimestamps() {
+        return timestampMap.getTimestamps();
+    }
+
+    @Override
     public ElementIterable get(double timestamp) {
         checkDouble(timestamp);
 

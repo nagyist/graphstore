@@ -117,6 +117,24 @@ public class TimestampMapTest {
         TimestampMap map = new TimestampMap();
         Assert.assertFalse(map.contains(1.0));
     }
+    
+    
+    @Test
+    public void testGetTimestamps() {
+        TimestampMap map = new TimestampMap();
+        map.addTimestamp(5);
+        map.addTimestamp(2.2);
+        map.addTimestamp(6);
+        map.addTimestamp(6.1);
+        map.addTimestamp(1);
+        
+        Assert.assertEquals(map.getTimestamps(), new double[]{1, 2.2, 5, 6, 6.1});
+        
+        map.removeTimestamp(6);
+        map.removeTimestamp(2.2);
+        
+        Assert.assertEquals(map.getTimestamps(), new double[]{1, 5, 6.1});
+    }
 
     @Test
     public void testAddAfterRemove() {
