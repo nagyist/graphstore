@@ -17,8 +17,8 @@ package org.gephi.attribute.time;
 
 /**
  * Represents an Interval with an associated value for it
- * @author Eduardo Ramos<eduramiba@gmail.com>
- * @param <T>
+ * @param <T> Type of the value contained in the interval
+ * @author Eduardo Ramos
  */
 public final class IntervalWithValue<T> extends Interval {
     
@@ -82,12 +82,13 @@ public final class IntervalWithValue<T> extends Interval {
         return sb.toString();
     }
     
+    private static final char[] SPECIAL_CHARACTERS = ";,()[]\"'".toCharArray();
     /**
      * @param value String value
      * @return True if the string contains special characters for dynamic intervals syntax
      */
     public static boolean containsSpecialCharacters(String value) {
-        for (Character c : ";,()[]\"'".toCharArray()) {
+        for (char c : SPECIAL_CHARACTERS) {
             if (value.indexOf(c) != -1) {
                 return true;
             }
